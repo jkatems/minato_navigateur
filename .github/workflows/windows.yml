@@ -1,0 +1,57 @@
+name: Windows distributable
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'resources/**'
+      - 'CMakeLists.txt'
+      - 'scripts/build-windows.ps1'
+      - 'packaging/**'
+      - '.github/workflows/windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt and WebEngine
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.11.2'
+          arch: win64_msvc2022_64
+          modules: 'qtwebengine qtwebchannel qtpositioning'
+          cache: true
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed' }
+      - name: Build, test and package
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Installer
+      - name: Downloadable packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minato-Windows-x64
+          path: |
+            dist/windows/*/*.zip
+            dist/windows/*/*.exe
+            dist/windows/*/*.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-test-logs
+          path: build-windows/Testing/Temporary/
+          if-no-files-found: ignore

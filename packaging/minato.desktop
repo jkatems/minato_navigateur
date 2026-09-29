@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Minato
+Comment=Navigateur web personnel
+Exec=minato
+Icon=minato
+Terminal=false
+Categories=Network;WebBrowser;
