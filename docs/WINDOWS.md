@@ -14,6 +14,14 @@ Le ZIP contient le dossier complet du navigateur. L’EXE est l’installateur. 
 
 La version Qt est fixée pour rendre le build reproductible ; la mettre à jour régulièrement pour bénéficier des correctifs WebEngine. Cette automatisation n’a pas encore été exécutée sur GitHub depuis cet environnement.
 
+### Si l’installation Qt échoue dans Actions
+
+Le workflow fixe Python à la branche **3.14** avec `actions/setup-python@v6` et utilise `setup-python: false` dans l’action Qt, pour que celle-ci conserve cet interpréteur. L’action Qt est fixée à `v4.4.1` et py7zr à `1.1.0`, conformément au contournement amont des erreurs Bad7zFile sous Windows. Python 3.14 est la branche recommandée par cette version de l’action ; le simple chemin vers Python 3.14.7 ne prouve pas une incompatibilité Python. Les actions checkout et upload-artifact utilisent désormais leur version 6 avec le runtime Node.js 24.
+
+Une erreur finale « python.exe failed with exit code 1 » ne suffit pas à identifier la cause : consulter le premier `ERROR` ou `Traceback` dans l’étape **Install Qt and WebEngine**. L’étape **Qt installer environment** affiche l’interpréteur et pip réellement sélectionnés. L’avertissement de dépréciation Node.js est distinct de cet échec Python. En cas d’échec, une étape affiche aussi les versions installées de aqtinstall/py7zr et les fichiers de journal aqtinstall disponibles sont joints aux artefacts de diagnostic.
+
+Après modification du workflow, pousser le fichier sur la branche choisie et lancer **une nouvelle exécution** avec Run workflow. Relancer l’ancienne exécution conserve la révision de workflow qui avait échoué.
+
 ## Option 2 — compiler sur Windows en une commande
 
 Installer une fois :
@@ -59,3 +67,5 @@ Avant diffusion publique, essayer le paquet sur un Windows 10/11 propre, vérifi
 La compilation et le packaging Windows restent à valider nativement. Les vérifications réalisées ici sous Fedora portent sur CMake/Linux et la structure des fichiers d’automatisation.
 
 Références : [déploiement Qt Windows](https://doc.qt.io/qt-6/windows-deployment.html), [ressources WebEngine](https://doc.qt.io/qt-6/qtwebengine-deploying.html), [action d’installation Qt](https://github.com/jurplel/install-qt-action).
+
+Références de maintenance CI : [version Qt action 4.4.1](https://github.com/jurplel/install-qt-action/releases/tag/v4.4.1), [configuration amont Python/py7zr](https://github.com/jurplel/install-qt-action/blob/v4.4.1/action.yml).

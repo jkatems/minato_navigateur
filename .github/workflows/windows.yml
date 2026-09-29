@@ -22,10 +22,26 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Qt and WebEngine
-        uses: jurplel/install-qt-action@v4
+      - uses: actions/checkout@v6
+      # Keep the Python branch explicit instead of following the runner's newest Python.
+      - name: Set up Python for Qt installer
+        uses: actions/setup-python@v6
         with:
+          python-version: '3.14'
+          architecture: x64
+      - name: Qt installer environment
+        shell: pwsh
+        run: |
+          python --version
+          if ($LASTEXITCODE -ne 0) { throw 'Python is unavailable' }
+          python -m pip --version
+          if ($LASTEXITCODE -ne 0) { throw 'pip is unavailable' }
+      - name: Install Qt and WebEngine
+        uses: jurplel/install-qt-action@v4.4.1
+        with:
+          setup-python: false
+          # Upstream workaround for Windows Bad7zFile with newer py7zr versions.
+          py7zrversion: '==1.1.0'
           version: '6.11.2'
           arch: win64_msvc2022_64
           modules: 'qtwebengine qtwebchannel qtpositioning'
@@ -39,7 +55,7 @@ jobs:
         shell: pwsh
         run: ./scripts/build-windows.ps1 -Installer
       - name: Downloadable packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Minato-Windows-x64
           path: |
@@ -48,10 +64,19 @@ jobs:
             dist/windows/*/*.sha256
           if-no-files-found: error
           retention-days: 30
+      - name: Installer diagnostics
+        if: failure()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          python --version
+          python -m pip show aqtinstall py7zr
       - name: Test logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Windows-test-logs
-          path: build-windows/Testing/Temporary/
+          path: |
+            build-windows/Testing/Temporary/
+            **/aqtinstall*.log
           if-no-files-found: ignore
