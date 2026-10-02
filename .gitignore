@@ -3,3 +3,10 @@
 *.user
 *.sqlite
 *.sqlite-*
+
+server/.venv/
+__pycache__/
+*.pyc
+*.sqlite3
+server/staticfiles/
+.env

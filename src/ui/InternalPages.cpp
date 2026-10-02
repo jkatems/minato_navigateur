@@ -2,6 +2,8 @@
 #include "browser/UrlResolver.h"
 #include "network/NetworkManager.h"
 #include "profiles/Profile.h"
+#include "sync/SyncClient.h"
+#include "sync/SyncPage.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -127,9 +129,9 @@ void library(bool bookmarks, Profile &p, QVBoxLayout *layout, QWidget *root,
 } // namespace
 QString InternalPages::title(const QString &page) {
     static const QMap<QString, QString> titles{
-        {"newtab", "Nouvel onglet"},      {"network", "Réseau"},         {"history", "Historique"},
-        {"bookmarks", "Favoris"},         {"settings", "Paramètres"},    {"about", "À propos"},
-        {"downloads", "Téléchargements"}, {"passwords", "Mots de passe"}};
+        {"sync", "Partage du parc"}, {"newtab", "Nouvel onglet"},      {"network", "Réseau"},
+        {"history", "Historique"},   {"bookmarks", "Favoris"},         {"settings", "Paramètres"},
+        {"about", "À propos"},       {"downloads", "Téléchargements"}, {"passwords", "Mots de passe"}};
     return titles.value(page, "Page introuvable");
 }
 QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigate, QWidget *parent) {
@@ -152,8 +154,10 @@ QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigat
         search->setClearButtonEnabled(true);
         layout->addWidget(search);
         QObject::connect(search, &QLineEdit::returnPressed, root, [search, &p, navigate] {
-            navigate(Minato::resolveInput(
-                search->text(), p.settings->value("search", "https://duckduckgo.com/?q=%1").toString()));
+            const auto target = Minato::resolveInput(
+                search->text(), p.settings->value("search", "https://duckduckgo.com/?q=%1").toString());
+            p.sync->recordInput(search->text(), target, p.name);
+            navigate(target);
         });
         label("VOS ESCALES", "eyebrow", layout);
         auto *links = new QHBoxLayout;
@@ -214,6 +218,9 @@ QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigat
         layout->addLayout(actions);
         QObject::connect(button("Actualiser les interfaces", actions), &QPushButton::clicked, root, refresh);
         auto *publicButton = button("Consulter mon IP publique", actions);
+        auto *reportButton = button("Partage avec le serveur", actions);
+        QObject::connect(reportButton, &QPushButton::clicked, root,
+                         [navigate] { navigate(QUrl("minato://sync")); });
         actions->addStretch();
         auto *result = label("IP publique non demandée. Fournisseur : api.ipify.org (HTTPS). Un clic "
                              "transmet votre IP à ce service.",
@@ -225,13 +232,16 @@ QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigat
             network->fetchPublicIp();
         });
         QObject::connect(network, &NetworkManager::publicIpReady, root,
-                         [result, publicButton](const QString &ip) {
+                         [root, result, publicButton](const QString &ip) {
+                             root->setProperty("publicIp", ip);
                              result->setText(ip);
                              publicButton->setEnabled(true);
                          });
         label("La MAC peut être absente, masquée ou aléatoire. Le type de connexion est indiqué uniquement "
               "lorsqu’il est identifié par Qt ou le système.",
               "muted", layout);
+    } else if (page == "sync") {
+        layout->addWidget(SyncPage::create(p, root));
     } else if (page == "settings") {
         label("Les préférences sont propres à ce profil.", "subtitle", layout);
         auto *form = new QFormLayout;
@@ -266,29 +276,29 @@ QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigat
         auto *save = button("Enregistrer", actions);
         save->setObjectName("primary");
         save->setEnabled(!p.guest);
-        QObject::connect(
-            save, &QPushButton::clicked, root,
-            [&p, engine, home, restore, history, folder, appearance, root] {
-                const QUrl url(home->text().trimmed());
-                if (!Minato::isWebUrl(url) &&
-                    !(url.scheme() == "minato" && QStringList{"newtab", "settings", "history", "bookmarks",
-                                                              "network", "about", "downloads", "passwords"}
-                                                      .contains(url.host()))) {
-                    QMessageBox::warning(root, "Paramètres", "Page de démarrage invalide.");
-                    return;
-                }
-                p.settings->setValue("search", engine->currentData());
-                p.settings->setValue("home", url.toString());
-                p.settings->setValue("restore", restore->isChecked());
-                p.settings->setValue("history", history->isChecked());
-                p.settings->setValue("downloads", folder->text());
-                p.settings->setValue("theme", appearance->currentData());
-                p.settings->sync();
-                if (p.settings->status() != QSettings::NoError)
-                    failure(root);
-                else
-                    QMessageBox::information(root, "Minato", "Préférences enregistrées.");
-            });
+        QObject::connect(save, &QPushButton::clicked, root,
+                         [&p, engine, home, restore, history, folder, appearance, root] {
+                             const QUrl url(home->text().trimmed());
+                             if (!Minato::isWebUrl(url) &&
+                                 !(url.scheme() == "minato" &&
+                                   QStringList{"newtab", "settings", "history", "bookmarks", "network",
+                                               "sync", "about", "downloads", "passwords"}
+                                       .contains(url.host()))) {
+                                 QMessageBox::warning(root, "Paramètres", "Page de démarrage invalide.");
+                                 return;
+                             }
+                             p.settings->setValue("search", engine->currentData());
+                             p.settings->setValue("home", url.toString());
+                             p.settings->setValue("restore", restore->isChecked());
+                             p.settings->setValue("history", history->isChecked());
+                             p.settings->setValue("downloads", folder->text());
+                             p.settings->setValue("theme", appearance->currentData());
+                             p.settings->sync();
+                             if (p.settings->status() != QSettings::NoError)
+                                 failure(root);
+                             else
+                                 QMessageBox::information(root, "Minato", "Préférences enregistrées.");
+                         });
         actions->addStretch();
         auto *privacy = new QHBoxLayout;
         layout->addLayout(privacy);
@@ -300,7 +310,7 @@ QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigat
         });
         QObject::connect(button("Vider le cache", privacy), &QPushButton::clicked, root,
                          [&p] { p.web->clearHttpCache(); });
-        for (const auto &target : QStringList{"history", "passwords", "network", "about"})
+        for (const auto &target : QStringList{"history", "passwords", "network", "sync", "about"})
             QObject::connect(button(title(target), privacy), &QPushButton::clicked, root,
                              [navigate, target] { navigate(QUrl("minato://" + target)); });
         privacy->addStretch();
@@ -313,8 +323,8 @@ QWidget *InternalPages::create(const QString &page, Profile &p, Navigate navigat
     } else if (page == "about") {
         label("Minato 0.1 · Votre fenêtre sur le Web.", "subtitle", layout);
         label("C++17 · Qt " + QString(qVersion()) +
-                  " · Qt WebEngine · SQLite\nUn navigateur desktop pour Windows et Linux. Aucune télémétrie "
-                  "ajoutée par Minato.",
+                  " · Qt WebEngine · SQLite\nUn navigateur desktop pour Windows et Linux. Aucune collecte "
+                  "cachée. Le partage avec un parc administré est facultatif et visible.",
               "body", layout);
         label("Version initiale : les DRM, certains codecs multimédias et certains fournisseurs de connexion "
               "peuvent dépendre de la distribution Qt et des règles du site.",

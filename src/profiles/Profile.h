@@ -4,6 +4,7 @@
 #include <QTemporaryDir>
 #include <QWebEngineProfile>
 #include <memory>
+class SyncClient;
 class Profile {
   public:
     Profile(const QString &name, bool guest, const QString &dataRoot = {});
@@ -15,4 +16,5 @@ class Profile {
     std::unique_ptr<QSettings> settings;
     std::unique_ptr<Store> store;
     std::unique_ptr<QWebEngineProfile> web;
+    std::unique_ptr<SyncClient> sync;
 };

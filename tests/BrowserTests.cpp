@@ -1,11 +1,18 @@
 #include "browser/BrowserTab.h"
 #include "network/NetworkManager.h"
 #include "profiles/Profile.h"
+#include "reports/ReportDialog.h"
+#include "sync/SyncClient.h"
 #include "ui/MainWindow.h"
+#include "ui/Theme.h"
+#include <QCheckBox>
 #include <QLineEdit>
+#include <QLabel>
 #include <QNetworkCookie>
+#include <QPlainTextEdit>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QPushButton>
 #include <QStandardPaths>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -146,6 +153,81 @@ class BrowserTests : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(result.count(), 1, 15000);
         QVERIFY(result.first().first().toString().contains("indisponible"));
         QVERIFY(timer.elapsed() < 14000);
+    }
+    void reportPreviewIsExplicit() {
+        applyTheme(false);
+        Profile profile("report-ui", true, data.path());
+        QVERIFY(profile.store->visit("https://history-test.example/", "Test history"));
+        ReportDialog dialog(profile, "203.0.113.5");
+        dialog.show();
+        auto *history = dialog.findChild<QCheckBox *>("includeReportHistory");
+        auto *preview = dialog.findChild<QPlainTextEdit *>("reportPreview");
+        auto *password = dialog.findChild<QLineEdit *>("smtpPassword");
+        QVERIFY(history);
+        QVERIFY(preview);
+        QVERIFY(password);
+        QVERIFY(!history->isChecked());
+        QVERIFY(!preview->toPlainText().contains("history-test.example"));
+        QVERIFY(preview->toPlainText().contains("203.0.113.5"));
+        history->setChecked(true);
+        QVERIFY(preview->toPlainText().contains("history-test.example"));
+        password->setText("synthetic-test-password");
+        QVERIFY(!preview->toPlainText().contains("synthetic-test-password"));
+        QCOMPARE(password->echoMode(), QLineEdit::Password);
+        QVERIFY(!profile.settings->contains("smtp/password"));
+        if (!qEnvironmentVariableIsEmpty("MINATO_SCREENSHOT_DIR")) {
+            QTest::qWait(100);
+            QVERIFY(dialog.grab().save(qEnvironmentVariable("MINATO_SCREENSHOT_DIR") + "/report.png"));
+        }
+        dialog.reject();
+        QVERIFY(password->text().isEmpty());
+    }
+    void examUiWithoutConfiguration() {
+        Profile profile("exam-ui", false, data.path());
+        QVERIFY(profile.sync->startExam());
+        MainWindow window(profile);
+        window.addTab(QUrl("minato://sync"));
+        window.show();
+        QVERIFY(window.findChild<QLabel *>("examBanner"));
+        QVERIFY(!window.findChild<QLineEdit *>("syncToken"));
+        QVERIFY(!window.findChild<QPushButton *>("syncStart"));
+        QVERIFY(!window.findChild<QPushButton *>("syncStop"));
+        QVERIFY(!window.findChild<QCheckBox *>("syncConsent"));
+        QVERIFY(profile.sync->active());
+        if (!qEnvironmentVariableIsEmpty("MINATO_SCREENSHOT_DIR")) {
+            QTest::qWait(100);
+            QVERIFY(window.grab().save(qEnvironmentVariable("MINATO_SCREENSHOT_DIR") + "/exam.png"));
+        }
+    }
+    void syncPageAndPrivateMode() {
+        Profile profile("sync-private", true, data.path());
+        MainWindow window(profile);
+        window.addTab(QUrl("minato://sync"));
+        window.show();
+        auto *consent = window.findChild<QCheckBox *>("syncConsent");
+        auto *start = window.findChild<QPushButton *>("syncStart");
+        QVERIFY(consent);
+        QVERIFY(!consent->isChecked());
+        QVERIFY(!start->isEnabled());
+        QVERIFY(!profile.sync->active());
+        QVERIFY(window.findChild<QPushButton *>("sharingIndicator"));
+    }
+    void syncPageNormalProfile() {
+        Profile profile("sync-ui", false, data.path());
+        MainWindow window(profile);
+        window.addTab(QUrl("minato://sync"));
+        window.resize(1280, 960);
+        window.show();
+        auto *consent = window.findChild<QCheckBox *>("syncConsent");
+        auto *token = window.findChild<QLineEdit *>("syncToken");
+        QVERIFY(consent && !consent->isChecked());
+        QVERIFY(token && token->echoMode() == QLineEdit::Password);
+        QVERIFY(!profile.sync->active());
+        QVERIFY(!profile.settings->contains("sync/token"));
+        if (!qEnvironmentVariableIsEmpty("MINATO_SCREENSHOT_DIR")) {
+            QTest::qWait(100);
+            QVERIFY(window.grab().save(qEnvironmentVariable("MINATO_SCREENSHOT_DIR") + "/sync.png"));
+        }
     }
     void tabsAndPages() {
         Profile profile("ui", true, data.path());

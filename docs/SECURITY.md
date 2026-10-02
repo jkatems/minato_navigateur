@@ -27,3 +27,16 @@ Architecture prévue :
 - Proposition d’enregistrement explicite ; remplissage sur action utilisateur ; vérification stricte de l’origine HTTPS, des redirections, de l’onglet actif et des frames avant tout remplissage. Pas d’API privilégiée persistante injectée dans chaque site.
 
 Une validation dédiée devra couvrir changement d’origine, iframes, trousseau verrouillé, suppression, réutilisation des identifiants et absence de secrets dans fichiers/logs. Les limites de Qt WebEngine pour détecter les formulaires devront être évaluées avant de promettre un gestionnaire généraliste.
+
+## Ancien module SMTP
+
+Le module SMTP est conservé dans le code et les tests, mais il n’est plus accessible dans l’interface. Il n’effectue aucun envoi automatique.
+
+## Partage avec un parc administré
+
+Le partage API remplace le rapport SMTP dans l’interface. Désactivé par défaut, interdit en mode privé, il exige une autorisation dans la page native `minato://sync` et affiche son état en permanence. Le jeton d’appareil est gardé en mémoire seulement, jamais dans WebEngine ni QSettings. TLS vérifié, redirections refusées, file bornée et révocation côté serveur. Le serveur conserve une empreinte du jeton et réserve la lecture aux administrateurs. Les URL, recherches et titres peuvent contenir des informations sensibles malgré le retrait de paramètres de secrets courants. Les rapports SQLite ne sont pas chiffrés par Django ; protéger le volume et les sauvegardes. Voir [le guide serveur](../server/README.md) pour le modèle d’accès, les limites et la purge à planifier.
+
+
+## Démonstration d’examen locale
+
+`--exam` lance un partage automatique annoncé par un bandeau permanent, fixé à `127.0.0.1:8000`, sans jeton. Django ne dispense de connexion aux rapports qu’en `MINATO_EXAM_MODE=1`, avec contrôle de l’adresse directe loopback sur toutes les requêtes et hôtes locaux autorisés. Le lanceur lie le serveur à loopback et utilise une base distincte. Les API refusent les Origin et imposent un en-tête natif ; aucun CORS n’est activé. Tout processus/utilisateur local peut néanmoins lire ou soumettre des données : ce mode ne fournit pas d’authenticité des preuves d’examen. Aucun envoi en mode privé. Voir [EXAMEN.md](EXAMEN.md).

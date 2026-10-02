@@ -1,5 +1,11 @@
 # Minato
 
+**Mode examen local sans configuration :** [lancer le navigateur et les rapports Django sans connexion](docs/EXAMEN.md).
+
+
+**Nouveau : [Minato Observatoire, serveur Django de rapports](server/README.md).** Connexion administrateur, API par appareil, recherches/historique de navigation et réseau après activation dans `minato://sync`. Le partage API remplace l’envoi par e-mail dans l’interface.
+
+
 Minato est un navigateur desktop C++17 / Qt 6 Widgets, basé sur **Qt WebEngine**. Son interface « Nuit · menthe » réunit une barre de navigation compacte et un espace de travail à onglets. Un thème clair est également disponible.
 
 Cette version se concentre sur la **V1 utilisable**. Le coffre-fort de mots de passe et les fonctions avancées décrites dans la feuille de route ne sont pas présentés comme déjà implémentés.
@@ -13,6 +19,7 @@ Cette version se concentre sur la **V1 utilisable**. Le coffre-fort de mots de p
 - Profils isolés via `--profile Personnel` / `--profile Travail` ; mode invité avec `--private`.
 - Historique SQLite : recherche, compte de visites, suppression multiple, effacement ; favoris : ajout, recherche, modification, suppression.
 - Informations réseau locales : interfaces, état, IPv4, IPv6, MAC lorsqu’exposée, type fourni par Qt.
+- Partage API facultatif avec un parc administré : nouvelles recherches, visites et réseau ; rapports Django avec connexion administrateur. Voir [le guide serveur](server/README.md).
 - IP publique facultative : requête HTTPS asynchrone vers ipify sur clic explicite, avec délai maximal de 10 secondes.
 - Téléchargements : choix du fichier, progression, annulation, erreurs, ouverture du dossier ; suivi limité à la session.
 - Paramètres par profil : moteur, accueil, restauration, historique, dossier de téléchargement, apparence, effacement des cookies/cache.
@@ -26,6 +33,7 @@ Cette version se concentre sur la **V1 utilisable**. Le coffre-fort de mots de p
 | `minato://history` | Historique recherchable |
 | `minato://bookmarks` | Favoris |
 | `minato://settings` | Préférences du profil |
+| `minato://sync` | Association au serveur et activation/arrêt du partage |
 | `minato://downloads` | Accès au suivi de la session |
 | `minato://about` | Version et informations |
 | `minato://passwords` | État explicite : coffre-fort non activé dans cette V1 |
@@ -63,8 +71,6 @@ cmake --build build --parallel 2
 Si plusieurs versions Qt sont installées, ajouter `-DCMAKE_PREFIX_PATH=/chemin/vers/Qt/6.x/gcc_64`. Pour compiler sans les tests : `-DBUILD_TESTING=OFF`.
 
 ## Windows 10/11 : compilation simplifiée
-
-**Sans installer d’outils sur votre PC :** le workflow [Windows distributable](.github/workflows/windows.yml) peut compiler sur GitHub. Une fois le projet poussé sur GitHub, ouvrir **Actions → Windows distributable → Run workflow**. Après réussite, télécharger l’artefact **Minato-Windows-x64** : il contient le ZIP, l’installateur `.exe` et leurs sommes SHA-256. Rien n’est publié automatiquement dans Releases.
 
 **Sur votre PC Windows :** installer une fois Visual Studio 2022 / Build Tools (charge **Desktop development with C++**, SDK Windows), CMake et Qt 6 MSVC 2022 x64 avec Qt WebEngine. Puis double-cliquer sur **`build-windows.cmd`**. Le script détecte Visual Studio et les kits dans `C:\Qt`, compile en Release, exécute les tests unitaires et crée une distribution complète dans `dist/windows/<date-identifiant>/`.
 
@@ -114,7 +120,10 @@ src/
   database/                SQLite, requêtes préparées, schéma versionné
   network/                 interfaces et fournisseur d’IP publique
   downloads/               téléchargement Qt et suivi de session
+  sync/                    client API, file en mémoire et autorisation native
+  reports/                 ancien module SMTP (non accessible dans l’interface)
   ui/                      fenêtre, composants et pages internes natives
+server/                    Django : connexion, rapports, appareils, API, migrations
 resources/                 identité visuelle et ressources Qt
 packaging/                 entrée desktop Linux
 tests/                     tests unitaires et tests WebEngine sur serveur local
@@ -141,7 +150,7 @@ Pour enregistrer les captures du test graphique : `mkdir -p /tmp/minato-captures
 
 ### Windows
 
-Utiliser `build-windows.cmd` pour le ZIP, ou `build-windows.cmd -Installer` pour ajouter un installateur NSIS. Le même script est exécuté par GitHub Actions.
+Utiliser `build-windows.cmd` pour le ZIP, ou `build-windows.cmd -Installer` pour ajouter un installateur NSIS. La compilation se fait localement ; l’ancienne configuration GitHub Actions est archivée et désactivée.
 
 Le script rassemble les dépendances avec le déploiement Qt, ajoute le runtime MSVC local, contrôle les DLL/plugins/ressources WebEngine, puis teste le lancement sans Qt dans `PATH`. Chaque exécution utilise un nouveau dossier de distribution. Le ZIP doit être extrait entièrement ; ouvrir ensuite `bin/minato.exe`. L’installateur ajoute un raccourci au menu Démarrer et une désinstallation.
 

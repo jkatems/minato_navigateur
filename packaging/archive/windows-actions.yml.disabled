@@ -40,12 +40,16 @@ jobs:
         uses: jurplel/install-qt-action@v4.4.1
         with:
           setup-python: false
+          # aqt 3.3.0 uses the pre-6.11 Windows repository layout (upstream PR #1000).
+          # Pin the merged fix rather than following an unversioned development branch.
+          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b'
           # Upstream workaround for Windows Bad7zFile with newer py7zr versions.
           py7zrversion: '==1.1.0'
           version: '6.11.2'
           arch: win64_msvc2022_64
           modules: 'qtwebengine qtwebchannel qtpositioning'
           cache: true
+          cache-key-prefix: minato-qt-aqt-8c3695d4
       - name: Install NSIS
         shell: pwsh
         run: |

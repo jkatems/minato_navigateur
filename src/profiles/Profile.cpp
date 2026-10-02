@@ -1,4 +1,5 @@
 #include "Profile.h"
+#include "sync/SyncClient.h"
 #include <QDir>
 #include <QStandardPaths>
 #include <QWebEngineSettings>
@@ -26,5 +27,6 @@ Profile::Profile(const QString &profileName, bool privateMode, const QString &da
     web->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, false);
     web->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false);
     web->settings()->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows, true);
+    sync = std::make_unique<SyncClient>(guest);
 }
 Profile::~Profile() = default;

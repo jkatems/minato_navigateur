@@ -54,7 +54,7 @@ if ($Installer -and -not (Get-Command makensis -ErrorAction SilentlyContinue)) {
 
 Invoke-Checked $cmake @('-S', $projectRoot, '-B', $buildDir, '-G', 'Visual Studio 17 2022', '-A', 'x64', "-DCMAKE_PREFIX_PATH=$QtRoot", '-DBUILD_TESTING=ON')
 Invoke-Checked $cmake @('--build', $buildDir, '--config', 'Release', '--parallel', "$Jobs")
-$testPattern = if ($RunBrowserTests) { 'core|browser' } else { '^core$' }
+$testPattern = if ($RunBrowserTests) { 'core|reports|smtp|sync|browser' } else { '^(core|reports|smtp|sync)$' }
 Invoke-Checked $ctest @('--test-dir', $buildDir, '-C', 'Release', '-R', $testPattern, '--output-on-failure')
 
 # A fresh output directory avoids including stale DLLs from an older Qt kit.

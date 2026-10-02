@@ -4,6 +4,7 @@
 #include "browser/UrlResolver.h"
 #include "downloads/DownloadManager.h"
 #include "profiles/Profile.h"
+#include "sync/SyncClient.h"
 #include <QApplication>
 #include <QCloseEvent>
 #include <QHBoxLayout>
@@ -65,6 +66,15 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
     auto *download = tool("↓", "Téléchargements", navigation);
     auto *menuButton = tool("☰", "Menu Minato", navigation);
     layout->addLayout(navigation);
+    if (profile.sync->examMode()) {
+        auto *notice = new QLabel("EXAMEN LOCAL · Les sites consultés, IP et MAC exposées sont transmis à "
+                                  "127.0.0.1:8000 · Rapports accessibles sans connexion sur cette machine.",
+                                  this);
+        notice->setObjectName("examBanner");
+        notice->setWordWrap(true);
+        notice->setMargin(10);
+        layout->addWidget(notice);
+    }
     progress = new QProgressBar;
     progress->setFixedHeight(3);
     progress->setTextVisible(false);
@@ -98,6 +108,7 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
             const auto target = Minato::resolveInput(
                 address->text(),
                 profile.settings->value("search", "https://duckduckgo.com/?q=%1").toString());
+            profile.sync->recordInput(address->text(), target, profile.name);
             active()->setFocus();
             active()->navigate(target);
         }
@@ -140,10 +151,11 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
     });
     menu->addSeparator();
     for (const auto &page :
-         QStringList{"bookmarks", "history", "settings", "network", "about", "passwords"}) {
-        const QMap<QString, QString> names{{"bookmarks", "Favoris"},   {"history", "Historique"},
-                                           {"settings", "Paramètres"}, {"network", "Réseau"},
-                                           {"about", "À propos"},      {"passwords", "Mots de passe"}};
+         QStringList{"bookmarks", "history", "settings", "network", "sync", "about", "passwords"}) {
+        const QMap<QString, QString> names{{"bookmarks", "Favoris"},      {"history", "Historique"},
+                                           {"settings", "Paramètres"},    {"network", "Réseau"},
+                                           {"sync", "Partage du parc"},   {"about", "À propos"},
+                                           {"passwords", "Mots de passe"}};
         menu->addAction(names.value(page), this, [this, page] { addTab(QUrl("minato://" + page)); });
     }
     menu->addSeparator();
@@ -199,7 +211,7 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
             active()->view()->setZoomFactor(1);
     });
     QStringList session;
-    if (!profile.guest && profile.settings->value("restore", true).toBool())
+    if (!profile.guest && !profile.sync->examMode() && profile.settings->value("restore", true).toBool())
         session = profile.settings->value("tabs").toStringList();
     for (const auto &url : session.mid(0, 30)) {
         const QUrl target(url);
@@ -207,9 +219,21 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
             addTab(target);
     }
     if (tabs->count() == 0)
-        addTab(QUrl(profile.settings->value("home", "minato://newtab").toString()));
+        addTab(profile.sync->examMode()
+                   ? QUrl("minato://newtab")
+                   : QUrl(profile.settings->value("home", "minato://newtab").toString()));
     if (!profile.guest)
         tabs->setCurrentIndex(qBound(0, profile.settings->value("activeTab", 0).toInt(), tabs->count() - 1));
+    auto *sharing = new QPushButton(this);
+    sharing->setObjectName("sharingIndicator");
+    const auto updateSharing = [this, sharing] {
+        sharing->setText(profile.guest ? "Mode privé · aucun partage" : profile.sync->status());
+        sharing->setToolTip("Configurer ou arrêter le partage avec le parc");
+    };
+    statusBar()->addPermanentWidget(sharing);
+    connect(profile.sync.get(), &SyncClient::statusChanged, this, updateSharing);
+    connect(sharing, &QPushButton::clicked, this, [this] { addTab(QUrl("minato://sync")); });
+    updateSharing();
     statusBar()->showMessage(profile.guest ? "Invité · session éphémère" : "Profil : " + profile.name);
     if (!profile.store->available())
         statusBar()->showMessage("Base locale indisponible : historique et favoris désactivés.");

@@ -1,4 +1,5 @@
 #include "profiles/Profile.h"
+#include "sync/SyncClient.h"
 #include "ui/MainWindow.h"
 #include <QApplication>
 #include <QCommandLineParser>
@@ -18,6 +19,7 @@ int main(int argc, char **argv) {
     parser.addVersionOption();
     parser.addOption({"profile", "Profil isolé (lettres, chiffres, tirets)", "name", "Personnel"});
     parser.addOption({"private", "Session invitée sans persistance"});
+    parser.addOption({"exam", "Examen local : envoi visible des visites/IP/MAC à Django sur 127.0.0.1:8000"});
     parser.process(app);
     const auto name = parser.value("profile");
     if (!QRegularExpression("^[A-Za-z0-9_-]{1,40}$").match(name).hasMatch())
@@ -33,6 +35,8 @@ int main(int argc, char **argv) {
         return 1;
     }
     Profile profile(name, guest);
+    if (parser.isSet("exam") && !guest)
+        profile.sync->startExam();
     MainWindow window(profile);
     window.show();
     return app.exec();

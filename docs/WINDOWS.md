@@ -1,28 +1,6 @@
 # Compiler et distribuer Minato sous Windows
 
-## Option 1 — laisser GitHub compiler
-
-Le dépôt contient `.github/workflows/windows.yml`. Il utilise une machine Windows 2022 x64, installe Qt 6.11.2 et WebEngine, puis exécute le script commun de compilation.
-
-1. Mettre le projet dans un dépôt GitHub avec le workflow sur la branche par défaut.
-2. Ouvrir **Actions → Windows distributable → Run workflow**.
-3. Attendre la fin du job Windows.
-4. Télécharger **Minato-Windows-x64** dans les artefacts de l’exécution.
-5. Extraire cet artefact pour récupérer `Minato-0.1.0-windows-x64.zip`, `Minato-0.1.0-windows-x64.exe` et leurs fichiers `.sha256`.
-
-Le ZIP contient le dossier complet du navigateur. L’EXE est l’installateur. Le workflow est également déclenché pour les tags `v*` et les pull requests touchant le code de compilation. Les artefacts restent disponibles 30 jours ; ils ne sont pas publiés automatiquement dans Releases. Les quotas/frais éventuels dépendent du compte GitHub.
-
-La version Qt est fixée pour rendre le build reproductible ; la mettre à jour régulièrement pour bénéficier des correctifs WebEngine. Cette automatisation n’a pas encore été exécutée sur GitHub depuis cet environnement.
-
-### Si l’installation Qt échoue dans Actions
-
-Le workflow fixe Python à la branche **3.14** avec `actions/setup-python@v6` et utilise `setup-python: false` dans l’action Qt, pour que celle-ci conserve cet interpréteur. L’action Qt est fixée à `v4.4.1` et py7zr à `1.1.0`, conformément au contournement amont des erreurs Bad7zFile sous Windows. Python 3.14 est la branche recommandée par cette version de l’action ; le simple chemin vers Python 3.14.7 ne prouve pas une incompatibilité Python. Les actions checkout et upload-artifact utilisent désormais leur version 6 avec le runtime Node.js 24.
-
-Une erreur finale « python.exe failed with exit code 1 » ne suffit pas à identifier la cause : consulter le premier `ERROR` ou `Traceback` dans l’étape **Install Qt and WebEngine**. L’étape **Qt installer environment** affiche l’interpréteur et pip réellement sélectionnés. L’avertissement de dépréciation Node.js est distinct de cet échec Python. En cas d’échec, une étape affiche aussi les versions installées de aqtinstall/py7zr et les fichiers de journal aqtinstall disponibles sont joints aux artefacts de diagnostic.
-
-Après modification du workflow, pousser le fichier sur la branche choisie et lancer **une nouvelle exécution** avec Run workflow. Relancer l’ancienne exécution conserve la révision de workflow qui avait échoué.
-
-## Option 2 — compiler sur Windows en une commande
+## Compiler sur Windows en une commande
 
 Installer une fois :
 
@@ -43,7 +21,7 @@ Le lanceur utilise PowerShell 5.1 ou supérieur. Son option ExecutionPolicy s’
 
 Le script initialise MSVC avec `vswhere` et `VsDevCmd`, cherche Qt dans `QT_ROOT_DIR`, puis `QTDIR`, puis les kits stables de `C:\Qt`. `-QtRoot` permet un choix explicite. Pas d’installation ni de téléchargement automatique sur votre PC par ce script.
 
-`-Jobs 4` permet quatre compilations parallèles. `-RunBrowserTests` ajoute les tests WebEngine, à exécuter dans une session Windows graphique ; les tests unitaires sont toujours exécutés. GitHub exécute les tests unitaires et les contrôles de packaging, pas le scénario d’interaction graphique complet.
+`-Jobs 4` permet quatre compilations parallèles. `-RunBrowserTests` ajoute les tests WebEngine, à exécuter dans une session Windows graphique ; les tests unitaires et de rapport sont toujours exécutés. Les tests SMTP locaux demandent le backend OpenSSL et sont ignorés s’il manque.
 
 ## Ce qui est produit
 
@@ -64,8 +42,10 @@ Si CMake signale un ancien générateur ou kit incompatible, renommer le dossier
 
 Avant diffusion publique, essayer le paquet sur un Windows 10/11 propre, vérifier navigation HTTPS, réseau, SQLite et téléchargements, et joindre les notices/licences correspondant à la distribution Qt/Chromium. La signature Authenticode n’est pas configurée ; Windows peut afficher un avertissement d’éditeur inconnu.
 
-La compilation et le packaging Windows restent à valider nativement. Les vérifications réalisées ici sous Fedora portent sur CMake/Linux et la structure des fichiers d’automatisation.
+Vous avez confirmé la compilation de la version précédente sous Windows. Les nouveaux modules doivent être recompilés et validés sur cette machine ; les vérifications exécutées par l’agent restent faites sous Fedora.
 
 Références : [déploiement Qt Windows](https://doc.qt.io/qt-6/windows-deployment.html), [ressources WebEngine](https://doc.qt.io/qt-6/qtwebengine-deploying.html), [action d’installation Qt](https://github.com/jurplel/install-qt-action).
 
-Références de maintenance CI : [version Qt action 4.4.1](https://github.com/jurplel/install-qt-action/releases/tag/v4.4.1), [configuration amont Python/py7zr](https://github.com/jurplel/install-qt-action/blob/v4.4.1/action.yml).
+## Ancienne automatisation
+
+GitHub Actions a été désactivé à votre demande. La configuration est conservée pour référence dans `packaging/archive/windows-actions.yml.disabled` ; elle ne déclenche plus de job.

@@ -1,0 +1,26 @@
+# Adapter le domaine, les certificats et le chemin staticfiles.
+# Le processus Django/Waitress écoute uniquement 127.0.0.1:8000.
+server {
+    listen 80;
+    server_name rapports.example.org;
+    return 301 https://$host$request_uri;
+}
+server {
+    listen 443 ssl;
+    server_name rapports.example.org;
+    ssl_certificate /etc/letsencrypt/live/rapports.example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/rapports.example.org/privkey.pem;
+    client_max_body_size 256k;
+    # Évite de journaliser les recherches des administrateurs dans les URL GET.
+    access_log off;
+    location /static/ {
+        alias /opt/minato/server/staticfiles/;
+    }
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+}

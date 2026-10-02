@@ -1,6 +1,7 @@
 #include "BrowserTab.h"
 #include "UrlResolver.h"
 #include "profiles/Profile.h"
+#include "sync/SyncClient.h"
 #include "ui/InternalPages.h"
 #include <QLabel>
 #include <QStackedLayout>
@@ -60,6 +61,8 @@ BrowserTab::BrowserTab(Profile &p, QWidget *parent) : QWidget(parent), profile(p
         if (internal())
             return;
         pendingNavigation = false;
+        if (ok && Minato::isWebUrl(web->url()))
+            profile.sync->record("visit", web->url(), web->title(), {}, profile.name);
         if (ok && Minato::isWebUrl(web->url()) && profile.settings->value("history", true).toBool()) {
             if (!profile.store->visit(web->url().toString(), web->title())) {
                 error->setText(

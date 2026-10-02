@@ -46,3 +46,23 @@ QT_QPA_PLATFORM=offscreen ./dist/bin/minato --version
 ```
 
 Créer `/tmp/minato-captures` avant la commande si des captures sont souhaitées. Les tests Web utilisent des profils temporaires, distincts du profil Personnel.
+
+## Ajout du rapport SMTP
+
+Compilation du client SMTP et du dialogue de rapport réussie sous Fedora avec Qt 6.11.2.
+
+- `ctest --test-dir build -R '^(core|reports|smtp)$' --output-on-failure` : trois suites réussies.
+- Serveur SMTP simulé sur loopback : TLS direct et STARTTLS réussis ; certificat non approuvé, absence de STARTTLS et authentification refusée traités ; annulation et refus d’injection dans l’expéditeur vérifiés.
+- Aperçu : l’historique apparaît seulement après sélection de sa case ; le mot de passe est masqué, absent du rapport et absent des préférences persistantes.
+- Test graphique `browser_tests reportPreviewIsExplicit` exécuté sous Xvfb.
+
+Aucun e-mail réel n’a été expédié et aucun compte SMTP réel n’a été utilisé. La livraison via le fournisseur de l’utilisateur et la nouvelle compilation Windows restent à valider sur sa machine.
+
+## Mode examen local (2 octobre 2026)
+
+- Compilation Qt/C++ réussie sous Fedora.
+- 19 tests Django réussis : accès anonyme local aux rapports, réception sans jeton, affichage IP/MAC, refus des clients distants et des requêtes web avec Origin, maintien des protections du mode administré.
+- Suites CTest `core` et `sync` réussies.
+- `server/test_exam_integration.py` réussi : véritable client C++ → API Django sur 127.0.0.1:8000 → SQLite temporaire → rapport HTTP sans connexion contenant site, IP et MAC exposées.
+- Le lanceur Windows est fourni et empaqueté ; son exécution native reste à vérifier sur Windows.
+- Contrôle Qt sous Xvfb/X11 réussi : bandeau permanent, aucun champ de jeton ni bouton de configuration en mode examen, mode privé exclu (4 résultats QtTest réussis).
