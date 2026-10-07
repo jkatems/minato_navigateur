@@ -182,6 +182,23 @@ class BrowserTests : public QObject {
         dialog.reject();
         QVERIFY(password->text().isEmpty());
     }
+    void remoteDemoUiVisibleAndStoppable() {
+        Profile profile("remote-demo-ui", false, data.path());
+        QVERIFY(profile.sync->startRemoteDemo(QUrl("https://example.org"), true));
+        MainWindow window(profile);
+        window.addTab(QUrl("minato://sync"));
+        window.show();
+        auto *banner = window.findChild<QLabel *>("remoteDemoBanner");
+        QVERIFY(banner);
+        QVERIFY(banner->text().contains("example.org"));
+        QVERIFY(!window.findChild<QLabel *>("examBanner"));
+        QPushButton *stop = nullptr;
+        for (auto *button : window.findChildren<QPushButton *>())
+            if (button->text() == "Arrêter la transmission") stop = button;
+        QVERIFY(stop);
+        stop->click();
+        QVERIFY(!profile.sync->active());
+    }
     void examUiWithoutConfiguration() {
         Profile profile("exam-ui", false, data.path());
         QVERIFY(profile.sync->startExam());

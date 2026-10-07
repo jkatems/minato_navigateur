@@ -35,6 +35,7 @@ bool SyncClient::start(const QUrl &url, const QString &credential, bool consent)
         return false;
     stop();
     exam = false;
+    remoteDemo = false;
     endpoint = url;
     endpoint.setPath("/api/v1/events/");
     token = credential;
@@ -47,10 +48,26 @@ bool SyncClient::startExam() {
         return false;
     stop();
     exam = true;
+    remoteDemo = false;
     endpoint = QUrl("http://127.0.0.1:8000/api/v1/events/");
     enabled = true;
     setStatus("Examen local · transmission active vers 127.0.0.1:8000");
     return true;
+}
+bool SyncClient::startRemoteDemo(const QUrl &server, bool consent) {
+    if (privateMode || !consent || server.scheme() != "https" || !validServer(server))
+        return false;
+    stop();
+    exam = false;
+    remoteDemo = true;
+    endpoint = server;
+    endpoint.setPath("/api/v1/events/");
+    enabled = true;
+    setStatus("Démonstration · transmission vers " + server.host());
+    return true;
+}
+bool SyncClient::remoteDemoMode() const {
+    return remoteDemo;
 }
 bool SyncClient::examMode() const {
     return exam;
@@ -158,7 +175,9 @@ void SyncClient::flush() {
     }
     QNetworkRequest request(endpoint);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    if (exam)
+    if (remoteDemo)
+        request.setRawHeader("X-Minato-Demo", "1");
+    else if (exam)
         request.setRawHeader("X-Minato-Exam", "1");
     else
         request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
@@ -191,6 +210,9 @@ void SyncClient::flush() {
             delay = 2000;
             setStatus("Partage actif · dernier envoi " + QTime::currentTime().toString("HH:mm:ss") + " · " +
                       QString::number(queue.size()) + " en attente");
+            const auto instance = response.value("instance").toString();
+            if (remoteDemo && QRegularExpression("^[a-f0-9]{12}$").match(instance).hasMatch())
+                setStatus(message + " · instance " + instance);
             if (!queue.isEmpty())
                 retry.start(300);
         } else if (code == 401 || code == 403 || (code >= 300 && code < 500 && code != 429)) {

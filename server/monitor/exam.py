@@ -29,7 +29,8 @@ class ExamLocalOnlyMiddleware:
 
 
 def context(request):
-    return {"exam_mode": settings.EXAM_MODE}
+    return {"exam_mode": settings.EXAM_MODE, "ephemeral_demo": settings.EPHEMERAL_DEMO,
+            "demo_instance": settings.DEMO_INSTANCE, "demo_until": settings.DEMO_UNTIL}
 
 
 def local_device():
@@ -38,7 +39,7 @@ def local_device():
         user.set_unusable_password()
         user.save(update_fields=["password"])
     device, _ = Device.objects.get_or_create(id="4e2c34e0-50e1-4c8a-aa99-401aaef009aa", defaults={
-        "name": "Minato · Examen local", "created_by": user,
+        "name": "Minato · Démonstration" if settings.EPHEMERAL_DEMO else "Minato · Examen local", "created_by": user,
         "token_hash": "exam-local-no-authentication"})
     return device
 
@@ -49,6 +50,14 @@ def report_access(staff_decorator):
         @wraps(view)
         @never_cache
         def wrapped(request, *args, **kwargs):
+            if settings.EPHEMERAL_DEMO:
+                from .demo import expired
+                if expired():
+                    from django.http import HttpResponseGone
+                    return HttpResponseGone("Démonstration terminée.")
+                if not request.is_secure():
+                    return HttpResponseForbidden("HTTPS requis.")
+                return view(request, *args, **kwargs)
             if settings.EXAM_MODE:
                 if not is_local(request):
                     return HttpResponseForbidden("Mode examen : accès local uniquement.")

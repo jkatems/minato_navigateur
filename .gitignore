@@ -10,3 +10,7 @@ __pycache__/
 *.sqlite3
 server/staticfiles/
 .env
+
+.vercel/
+.env.*
+*.sqlite3-*

@@ -40,3 +40,8 @@ Le partage API remplace le rapport SMTP dans l’interface. Désactivé par déf
 ## Démonstration d’examen locale
 
 `--exam` lance un partage automatique annoncé par un bandeau permanent, fixé à `127.0.0.1:8000`, sans jeton. Django ne dispense de connexion aux rapports qu’en `MINATO_EXAM_MODE=1`, avec contrôle de l’adresse directe loopback sur toutes les requêtes et hôtes locaux autorisés. Le lanceur lie le serveur à loopback et utilise une base distincte. Les API refusent les Origin et imposent un en-tête natif ; aucun CORS n’est activé. Tout processus/utilisateur local peut néanmoins lire ou soumettre des données : ce mode ne fournit pas d’authenticité des preuves d’examen. Aucun envoi en mode privé. Voir [EXAMEN.md](EXAMEN.md).
+
+
+## Présentation distante éphémère
+
+`MINATO_EPHEMERAL_DEMO=1` est une variante expressément non privée et non persistante : rapports anonymes, fichier SQLite par processus sous `/tmp`, expiration UTC fixe au plus une heure après configuration. Le testeur accepte au lancement `--remote-demo` le partage et l’accès sans connexion aux rapports. Le bandeau et la commande d’arrêt sont conservés. Aucune donnée historique antérieure n’est importée ; le mode privé est exclu. Cette API de démonstration n’authentifie pas les appareils et ses rapports ne constituent pas des preuves inviolables. Vercel peut distribuer les requêtes entre des bases distinctes ; voir [les limites et la procédure de suppression](VERCEL-DEMO.md).

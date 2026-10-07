@@ -66,6 +66,16 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
     auto *download = tool("↓", "Téléchargements", navigation);
     auto *menuButton = tool("☰", "Menu Minato", navigation);
     layout->addLayout(navigation);
+    if (profile.sync->remoteDemoMode()) {
+        auto *notice =
+            new QLabel("PARTAGE DE DÉMONSTRATION · Sites, recherches, IP et MAC exposées transmis à " +
+                           profile.sync->server().host() + " · Rapports accessibles sans connexion.",
+                       this);
+        notice->setWordWrap(true);
+        notice->setObjectName("remoteDemoBanner");
+        notice->setMargin(10);
+        layout->addWidget(notice);
+    }
     if (profile.sync->examMode()) {
         auto *notice = new QLabel("EXAMEN LOCAL · Les sites consultés, IP et MAC exposées sont transmis à "
                                   "127.0.0.1:8000 · Rapports accessibles sans connexion sur cette machine.",
@@ -211,7 +221,8 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
             active()->view()->setZoomFactor(1);
     });
     QStringList session;
-    if (!profile.guest && !profile.sync->examMode() && profile.settings->value("restore", true).toBool())
+    if (!profile.guest && !profile.sync->examMode() && !profile.sync->remoteDemoMode() &&
+        profile.settings->value("restore", true).toBool())
         session = profile.settings->value("tabs").toStringList();
     for (const auto &url : session.mid(0, 30)) {
         const QUrl target(url);
@@ -219,7 +230,7 @@ MainWindow::MainWindow(Profile &p) : profile(p) {
             addTab(target);
     }
     if (tabs->count() == 0)
-        addTab(profile.sync->examMode()
+        addTab((profile.sync->examMode() || profile.sync->remoteDemoMode())
                    ? QUrl("minato://newtab")
                    : QUrl(profile.settings->value("home", "minato://newtab").toString()));
     if (!profile.guest)

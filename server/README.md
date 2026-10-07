@@ -1,5 +1,10 @@
 # Minato Observatoire
 
+**Connexion PostgreSQL Supabase et génération de la clé Django :** voir [SUPABASE.md](SUPABASE.md).
+
+**Variante de présentation distante éphémère :** voir [VERCEL-DEMO.md](../docs/VERCEL-DEMO.md). Elle utilise un SQLite `/tmp` distinct par processus et des rapports sans connexion, avec expiration. Les instructions PostgreSQL/persistance ci-dessous concernent le mode administré normal.
+
+
 **Mode examen local sans configuration :** [lancer le navigateur et les rapports Django sans connexion](../docs/EXAMEN.md).
 
 

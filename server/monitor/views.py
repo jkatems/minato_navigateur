@@ -120,7 +120,16 @@ def event_detail(request, pk):
 @require_POST
 @sensitive_variables()
 def ingest(request):
-    if settings.EXAM_MODE:
+    if settings.EPHEMERAL_DEMO:
+        from .demo import expired
+        if expired():
+            return JsonResponse({"error": "demo_expired"}, status=410)
+        if not request.is_secure() or request.headers.get("Origin") or request.headers.get("X-Minato-Demo") != "1":
+            return JsonResponse({"error": "demo_native_https_required"}, status=403)
+        device = local_device()
+        if Event.objects.count() >= 10000:
+            return JsonResponse({"error": "demo_capacity_reached"}, status=429)
+    elif settings.EXAM_MODE:
         # Native client only. Cross-origin web pages cannot send this custom header
         # without a preflight, which this API does not permit.
         if not is_local(request) or request.headers.get("Origin") or request.headers.get("X-Minato-Exam") != "1":
@@ -167,4 +176,4 @@ def ingest(request):
             Event.objects.get_or_create(device=device, event_id=event["event_id"], defaults={k:v for k,v in event.items() if k != "event_id"} | {"peer_ip": address})
         device.last_seen = timezone.now()
         device.save(update_fields=["last_seen"])
-    return JsonResponse({"accepted": [str(event["event_id"]) for event in batch]})
+    return JsonResponse({"accepted": [str(event["event_id"]) for event in batch], "instance": settings.DEMO_INSTANCE})

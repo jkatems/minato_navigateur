@@ -15,6 +15,8 @@ class SyncClient : public QObject {
     ~SyncClient() override;
     bool start(const QUrl &server, const QString &token, bool consent);
     bool startExam();
+    bool startRemoteDemo(const QUrl &server, bool consent);
+    bool remoteDemoMode() const;
     bool examMode() const;
     void stop();
     bool active() const;
@@ -39,6 +41,7 @@ class SyncClient : public QObject {
     QString message = QStringLiteral("Partage désactivé");
     bool enabled = false;
     bool exam = false;
+    bool remoteDemo = false;
     int delay = 2000;
     void flush();
     void setStatus(const QString &text);

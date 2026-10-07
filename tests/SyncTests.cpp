@@ -1,4 +1,8 @@
 #include "sync/SyncClient.h"
+#include <QFile>
+#include <QSslCertificate>
+#include <QSslConfiguration>
+#include <QScopeGuard>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTcpServer>
@@ -136,6 +140,33 @@ class SyncTests : public QObject {
         QVERIFY(regular.examMode());
         QCOMPARE(regular.server(), QUrl("http://127.0.0.1:8000"));
         regular.stop();
+    }
+    void remoteDemoRequiresConsentAndHttps() {
+        SyncClient guest(true), client(false);
+        QVERIFY(!guest.startRemoteDemo(QUrl("https://example.org"), true));
+        QVERIFY(!client.startRemoteDemo(QUrl("https://example.org"), false));
+        QVERIFY(!client.startRemoteDemo(QUrl("http://127.0.0.1:8000"), true));
+        QVERIFY(client.startRemoteDemo(QUrl("https://example.org"), true));
+        QVERIFY(client.remoteDemoMode());
+        QVERIFY(!client.examMode());
+        client.stop();
+    }
+    void remoteDemoIntegration() {
+        const auto url = qEnvironmentVariable("MINATO_TEST_REMOTE_DEMO");
+        if (url.isEmpty()) QSKIP("Run through server/test_remote_demo.py with temporary data and test TLS");
+        const auto original = QSslConfiguration::defaultConfiguration();
+        auto restore = qScopeGuard([original] { QSslConfiguration::setDefaultConfiguration(original); });
+        auto config = original;
+        QFile cert(QStringLiteral(SYNC_FIXTURE_DIR "/smtp-test-cert.pem"));
+        QVERIFY(cert.open(QIODevice::ReadOnly));
+        auto cas = config.caCertificates();
+        cas.append(QSslCertificate::fromData(cert.readAll()));
+        config.setCaCertificates(cas);
+        QSslConfiguration::setDefaultConfiguration(config);
+        SyncClient client(false);
+        QVERIFY(client.startRemoteDemo(QUrl(url), true));
+        client.record("visit", QUrl("https://example.org/remote-demo"), "Remote demo integration", {}, "Demo");
+        QTRY_VERIFY_WITH_TIMEOUT(client.status().contains("instance"), 15000);
     }
     void examIntegration() {
         if (qEnvironmentVariable("MINATO_TEST_EXAM") != "1")

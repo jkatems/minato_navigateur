@@ -12,6 +12,32 @@ QWidget *SyncPage::create(Profile &profile, QWidget *parent) {
     auto *root = new QWidget(parent);
     auto *layout = new QVBoxLayout(root);
     layout->setContentsMargins(0, 0, 0, 0);
+    if (profile.sync->remoteDemoMode()) {
+        auto *notice =
+            new QLabel("Démonstration distante · les nouveaux sites, recherches, IP et MAC exposées "
+                       "sont transmis à " +
+                           profile.sync->server().toString() +
+                           ". Les rapports sont accessibles sans connexion. Les données sont temporaires et "
+                           "peuvent disparaître "
+                           "ou différer entre instances du serveur. Aucun mot de passe de formulaire ni "
+                           "cookie n’est envoyé.",
+                       root);
+        notice->setTextFormat(Qt::PlainText);
+        notice->setWordWrap(true);
+        layout->addWidget(notice);
+        auto *state = new QLabel(profile.sync->status(), root);
+        state->setWordWrap(true);
+        layout->addWidget(state);
+        auto *stop = new QPushButton("Arrêter la transmission", root);
+        layout->addWidget(stop);
+        QObject::connect(stop, &QPushButton::clicked, root, [&profile, stop] {
+            profile.sync->stop();
+            stop->setEnabled(false);
+        });
+        QObject::connect(profile.sync.get(), &SyncClient::statusChanged, root,
+                         [&profile, state] { state->setText(profile.sync->status()); });
+        return root;
+    }
     if (profile.sync->examMode()) {
         auto *notice = new QLabel(
             "MODE EXAMEN LOCAL\n\nLes pages consultées, les recherches validées, "

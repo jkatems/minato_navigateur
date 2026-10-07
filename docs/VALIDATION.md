@@ -66,3 +66,11 @@ Aucun e-mail réel n’a été expédié et aucun compte SMTP réel n’a été 
 - `server/test_exam_integration.py` réussi : véritable client C++ → API Django sur 127.0.0.1:8000 → SQLite temporaire → rapport HTTP sans connexion contenant site, IP et MAC exposées.
 - Le lanceur Windows est fourni et empaqueté ; son exécution native reste à vérifier sur Windows.
 - Contrôle Qt sous Xvfb/X11 réussi : bandeau permanent, aucun champ de jeton ni bouton de configuration en mode examen, mode privé exclu (4 résultats QtTest réussis).
+
+## Démonstration distante SQLite éphémère
+
+- Compilation C++ réussie sous Linux.
+- 23 tests Django réussis, dont rapports anonymes HTTPS, refus d’Origin, expiration et suppression logique à la requête suivante.
+- Suites CTest `core` et `sync` réussies ; consentement et HTTPS obligatoires pour le client distant.
+- `test_remote_demo.py` réussi : vrai client Qt → serveur HTTPS local avec certificat de test → SQLite temporaire → rapport anonyme. Les données de test et le serveur sont supprimés à la fin.
+- Les réglages Vercel et la collecte des fichiers statiques ont été validés localement. Aucun déploiement réel Vercel effectué ; l’affinité d’instance n’est pas garantie et ne peut pas être validée par le seul test local.

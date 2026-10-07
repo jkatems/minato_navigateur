@@ -202,3 +202,61 @@ class ExamTests(TestCase):
         middleware = ExamLocalOnlyMiddleware(lambda request: HttpResponse('local'))
         self.assertEqual(middleware(RequestFactory().get('/', REMOTE_ADDR='192.0.2.1')).status_code, 403)
         self.assertEqual(middleware(RequestFactory().get('/', REMOTE_ADDR='::1')).status_code, 200)
+
+
+@override_settings(EPHEMERAL_DEMO=True, EXAM_MODE=False, DEBUG=False, SECURE_SSL_REDIRECT=False,
+                   ALLOWED_HOSTS=['testserver'], DEMO_INSTANCE='012345abcdef')
+class RemoteDemoTests(TestCase):
+    def setUp(self):
+        self.deadline = self.settings(DEMO_UNTIL=timezone.now() + timedelta(minutes=50))
+        self.deadline.enable()
+        self.addCleanup(self.deadline.disable)
+
+    def event(self):
+        return {'id':str(uuid.uuid4()), 'kind':'visit', 'occurred_at':timezone.now().isoformat(),
+                'profile':'Demonstration', 'url':'https://example.org/demo', 'title':'Demo', 'query':'',
+                'interfaces':[{'name':'demo-interface','mac':'02:00:00:00:00:01'}], 'consent_version':1}
+
+    def send(self, **extra):
+        return self.client.post(reverse('ingest'), data=json.dumps({'events':[self.event()]}),
+            content_type='application/json', HTTP_X_MINATO_DEMO='1', secure=True, **extra)
+
+    def test_https_collection_and_anonymous_report(self):
+        response = self.send(REMOTE_ADDR='203.0.113.2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['instance'], '012345abcdef')
+        response = self.client.get('/', secure=True)
+        self.assertContains(response, 'https://example.org/demo')
+        self.assertContains(response, '02:00:00:00:00:01')
+        self.assertContains(response, '203.0.113.2')
+        self.assertContains(response, '012345abcdef')
+        self.assertEqual(self.client.get(reverse('event', args=[Event.objects.get().pk]), secure=True).status_code, 200)
+
+    def test_expiration_rejects_reads_and_writes(self):
+        with self.settings(DEMO_UNTIL=timezone.now()-timedelta(seconds=1)):
+            self.assertEqual(self.send().status_code, 410)
+            self.assertEqual(self.client.get('/', secure=True).status_code, 410)
+        self.assertFalse(Event.objects.exists())
+
+    def test_requires_https_native_client_and_no_origin(self):
+        self.assertEqual(self.client.get('/').status_code, 403)
+        self.assertEqual(self.send(HTTP_ORIGIN='https://example.org').status_code, 403)
+        response = self.client.post(reverse('ingest'), data='{}', content_type='application/json', secure=True)
+        self.assertEqual(response.status_code, 403)
+
+    def test_middleware_no_cache_and_expiry_purge(self):
+        from unittest.mock import patch
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+        from .demo import EphemeralDemoMiddleware
+        self.send()
+        middleware = EphemeralDemoMiddleware(lambda request: HttpResponse('demo'))
+        with patch('monitor.demo.ensure_database') as ensure:
+            response = middleware(RequestFactory().get('/', secure=True))
+            ensure.assert_called_once()
+            self.assertIn('no-store', response.headers['Cache-Control'])
+            self.assertEqual(response.headers['X-Minato-Instance'], '012345abcdef')
+        with self.settings(DEMO_UNTIL=timezone.now()-timedelta(seconds=1)), patch('monitor.demo._ready', True):
+            response = middleware(RequestFactory().get('/', secure=True))
+            self.assertEqual(response.status_code, 410)
+            self.assertFalse(Event.objects.exists())

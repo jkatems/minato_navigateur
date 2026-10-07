@@ -1,5 +1,8 @@
 # Minato
 
+**Démonstration distante :** [configuration Vercel + SQLite éphémère](docs/VERCEL-DEMO.md), avec accord du testeur et transmission visible. URL du navigateur dans `src/sync/DemoConfig.h`.
+
+
 **Mode examen local sans configuration :** [lancer le navigateur et les rapports Django sans connexion](docs/EXAMEN.md).
 
 
