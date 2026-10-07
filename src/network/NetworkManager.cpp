@@ -3,6 +3,9 @@
 #include <QNetworkInterface>
 #include <QNetworkReply>
 #include <QTimer>
+#include <type_traits>
+#include "extraction.h"
+
 NetworkManager::NetworkManager(QObject *parent) : QObject(parent), manager(this) {}
 QList<NetworkInterfaceInfo> NetworkManager::interfaces() {
     QList<NetworkInterfaceInfo> result;
@@ -16,14 +19,17 @@ QList<NetworkInterfaceInfo> NetworkManager::interfaces() {
         }
         const auto type = interfaceType(iface);
         auto mac = iface.hardwareAddress();
+        const auto ifaceName = iface.humanReadableName().toStdString();
+        QString connexion = QString::fromStdString(resultat);
+        
         if (mac.isEmpty() || mac == "00:00:00:00:00:00")
             mac = "Non exposée par le système";
-        result.push_back(
-            {iface.humanReadableName(), type,
-             iface.flags().testFlag(QNetworkInterface::IsUp)
-                 ? (iface.flags().testFlag(QNetworkInterface::IsRunning) ? "Active" : "Activée, sans liaison")
-                 : "Inactive",
-             v4.join("\n"), v6.join("\n"), mac});
+        result.push_back(NetworkInterfaceInfo{
+            iface.humanReadableName(), type,
+            iface.flags().testFlag(QNetworkInterface::IsUp)
+                ? (iface.flags().testFlag(QNetworkInterface::IsRunning) ? "Active" : "Activée, sans liaison")
+                : "Inactive",
+            v4.join("\n"), v6.join("\n"), mac, connexion});
     }
     return result;
 }

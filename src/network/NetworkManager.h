@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QUrl>
 struct NetworkInterfaceInfo {
-    QString name, type, state, ipv4, ipv6, mac;
+    QString name, type, state, ipv4, ipv6, mac, connexion;
 };
 class NetworkManager : public QObject {
     Q_OBJECT

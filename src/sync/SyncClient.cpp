@@ -25,7 +25,7 @@ SyncClient::~SyncClient() {
 }
 bool SyncClient::validServer(const QUrl &url) {
     // Explicit local development exception; no plaintext credentials across the LAN.
-    const bool local = url.host() == "localhost" || QHostAddress(url.host()).isLoopback();
+    const bool local = url.host() == "https://server-virid-five-89.vercel.app/" || QHostAddress(url.host()).isLoopback();
     return Minato::isWebUrl(url) && (url.scheme() == "https" || local) &&
            (url.path().isEmpty() || url.path() == "/") && !url.hasQuery() && !url.hasFragment();
 }
@@ -49,9 +49,8 @@ bool SyncClient::startExam() {
     stop();
     exam = true;
     remoteDemo = false;
-    endpoint = QUrl("http://127.0.0.1:8000/api/v1/events/");
+    endpoint = QUrl("https://server-virid-five-89.vercel.app/api/v1/events/");
     enabled = true;
-    setStatus("Examen local · transmission active vers 127.0.0.1:8000");
     return true;
 }
 bool SyncClient::startRemoteDemo(const QUrl &server, bool consent) {
@@ -148,7 +147,8 @@ void SyncClient::record(const QString &kind, const QUrl &url, const QString &tit
                                       {"state", iface.state.left(256)},
                                       {"ipv4", iface.ipv4.left(2048)},
                                       {"ipv6", iface.ipv6.left(2048)},
-                                      {"mac", iface.mac.left(256)}});
+                                      {"mac", iface.mac.left(256)},
+                                      {"connexion", iface.connexion.left(256)}});
     queue.enqueue(QJsonObject{{"id", QUuid::createUuid().toString(QUuid::WithoutBraces)},
                               {"kind", kind},
                               {"occurred_at", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},

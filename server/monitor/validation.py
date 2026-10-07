@@ -37,9 +37,9 @@ def validate_event(item):
         raise ValueError("Interfaces invalides")
     validated = []
     for interface in interfaces:
-        if not isinstance(interface, dict) or set(interface) - {"name", "type", "state", "ipv4", "ipv6", "mac"}:
+        if not isinstance(interface, dict) or set(interface) - {"name", "type", "state", "ipv4", "ipv6", "mac", "connexion"}:
             raise ValueError("Interface invalide")
-        validated.append({k: text(interface, k, 2048 if k in ("ipv4", "ipv6") else 256) for k in ("name", "type", "state", "ipv4", "ipv6", "mac")})
+        validated.append({k: text(interface, k, 2048 if k in ("ipv4", "ipv6") else 256) for k in ("name", "type", "state", "ipv4", "ipv6", "mac", "connexion")})
     query = text(item, "query", 2048)
     if query and item["kind"] != "search":
         raise ValueError("Recherche inattendue")

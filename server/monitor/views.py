@@ -177,3 +177,4 @@ def ingest(request):
         device.last_seen = timezone.now()
         device.save(update_fields=["last_seen"])
     return JsonResponse({"accepted": [str(event["event_id"]) for event in batch], "instance": settings.DEMO_INSTANCE})
+
